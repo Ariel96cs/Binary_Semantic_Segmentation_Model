@@ -94,7 +94,7 @@ class BInstSeg:
         self.model = model
         return model
 
-    def train_model(self, x_train, y_train, early_stopping_patience=None,epochs=60, check_point_name=None,
+    def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, check_point_name=None,
                     save_best_only=True,validation_split=0.1, verbose=1,
                     batch_size=16):
         callbacks = []
