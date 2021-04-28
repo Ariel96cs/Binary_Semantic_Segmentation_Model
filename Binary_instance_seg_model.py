@@ -2,13 +2,16 @@ from tensorflow.keras.layers import Conv2D,Dropout,MaxPooling2D,Conv2DTranspose,
 from tensorflow.keras.models import Model,load_model
 from tensorflow.keras.metrics import MeanIoU
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
+from Custom_generator import CustomDataGen
+from sklearn.model_selection import train_test_split
 
 mean_iou = MeanIoU(num_classes=2)
 
 class BInstSeg:
-    def __init__(self, input_shape):
+    def __init__(self, input_shape,read_image_func=None):
         self.input_shape = input_shape
         self.model = None
+        self.read_image_func = read_image_func
 
     def build_and_compile_model(self,show_summary=True):
         # Build U-Net model
@@ -96,7 +99,7 @@ class BInstSeg:
 
     def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, check_point_name=None,
                     save_best_only=True,validation_split=0.1, verbose=1,
-                    batch_size=16):
+                    batch_size=16, use_custom_generator_training=False):
         callbacks = []
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
@@ -104,10 +107,21 @@ class BInstSeg:
         if check_point_name is not None:
             check_pointer = ModelCheckpoint(check_point_name, verbose=verbose,save_best_only=save_best_only)
             callbacks.append(check_pointer)
+        if use_custom_generator_training:
+            X_train,X_val,y_train,y_val = train_test_split(x_train,y_train,test_size=validation_split,shuffle=True,
+                                                           random_state=42)
 
-        history = self.model.fit(x_train,y_train,validation_split=validation_split,batch_size=batch_size,epochs=epochs,
-                                 callbacks=callbacks)
+            traingen = CustomDataGen(X_train,y_train,batch_size,self.input_shape,load_images_func=self.read_image_func)
+            valgen = CustomDataGen(X_val, y_val, batch_size, self.input_shape,load_images_func=self.read_image_func)
+
+            history = self.model.fit(traingen, validation_data=valgen,epochs=epochs,batch_size=batch_size,
+                                     callbacks=callbacks)
+        else:
+            history = self.model.fit(x_train,y_train,validation_split=validation_split,batch_size=batch_size,
+                                     epochs=epochs,
+                                     callbacks=callbacks)
         return history
+
 
     def load_model(self, model_path):
         self.model = load_model(model_path)
