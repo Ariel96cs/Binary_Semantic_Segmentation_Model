@@ -109,7 +109,7 @@ class RandomAugmetationGen(ImageDataGenerator):
         def transformation_funct(apply_brightness_mod=True):
             if not apply_brightness_mod:
                 params['brightness'] = None
-            print("Checking brightness:",params['brightness'])
+            # print("Checking brightness:",params['brightness'])
             def f(image):
                 return self.apply_transform(image, params)
             return f

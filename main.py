@@ -6,7 +6,7 @@ import numpy as np
 import json
 from tqdm import tqdm
 from keras.preprocessing.image import load_img
-
+from os import makedirs
 
 
 def read_image(img_path, label_path, image_shape):
@@ -39,8 +39,9 @@ def main():
     parser = ArgumentParser(description="Script for training Unet Model for mask generator")
     parser.add_argument("-d","--dataset_path",help="Dataset path",type=str,required=True)
     parser.add_argument("-m","--model_path",help="Pretrained model path to load",type=str)
-    parser.add_argument('-ck','--model_checkpoint',help="Modek checkpoint name",type=str,required=True)
+    parser.add_argument('-ck','--model_checkpoint',help="Model checkpoint filepath",type=str,default='./checkpoints/')
     parser.add_argument("-i","--input_model_shape", help="Input model shape", type=int, default=224)
+    parser.add_argument("-iepoch","--initial_epoch", help="Epoch index to restart training", type=int,default=0)
     parser.add_argument('-g','--grayscaled_model_input',help="Train a grayscaled input model",default=False,type=bool)
     parser.add_argument('-G', '--generate_masks_from_json', help="Generate masks images from ground truth json", default=False,
                         type=bool)
@@ -52,6 +53,8 @@ def main():
     dataset_path = args.dataset_path
     model_path = args.model_path
     generate_masks = args.generate_masks_from_json
+    if not Path(args.model_checkpoint).exists():
+        makedirs(args.model_checkpoint)
 
     model = BInstSeg(model_input_shape)
     if model_path is not None:
@@ -91,8 +94,8 @@ def main():
 
     print("Training segmentation model")
     # model.compile_model()
-    model.train_model(x_paths,y_paths,early_stopping_patience=10,check_point_name=args.model_checkpoint
-                      ,use_custom_generator_training=True,epochs=200)
+    model.train_model(x_paths,y_paths,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
+                      ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch)
 
 if __name__ == '__main__':
     main()

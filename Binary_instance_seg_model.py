@@ -98,15 +98,16 @@ class BInstSeg:
         self.model = model
         return model
 
-    def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, check_point_name=None,
+    def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, checkpoint_filepath='./checkpoints/',
                     save_best_only=True,validation_split=0.1, verbose=1,
-                    batch_size=32, use_custom_generator_training=False,save_distribution=True):
+                    batch_size=32, use_custom_generator_training=False,save_distribution=True, initial_epoch=0):
         callbacks = []
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
             callbacks.append(early_stopping)
-        if check_point_name is not None:
-            check_pointer = ModelCheckpoint(check_point_name, verbose=verbose,save_best_only=save_best_only)
+        if checkpoint_filepath is not None:
+            name = 'instance_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
+            check_pointer = ModelCheckpoint(f'{checkpoint_filepath}/{name}', verbose=verbose,save_best_only=save_best_only)
             callbacks.append(check_pointer)
         if use_custom_generator_training:
             X_train,X_val,y_train,y_val = train_test_split(x_train,y_train,test_size=validation_split,shuffle=True,
@@ -122,11 +123,11 @@ class BInstSeg:
             valgen = CustomDataGen(X_val, y_val, batch_size, self.input_shape,load_images_func=self.read_image_func)
 
             history = self.model.fit(traingen, validation_data=valgen,epochs=epochs,batch_size=batch_size,
-                                     callbacks=callbacks)
+                                     callbacks=callbacks,initial_epoch=initial_epoch)
         else:
             history = self.model.fit(x_train,y_train,validation_split=validation_split,batch_size=batch_size,
                                      epochs=epochs,
-                                     callbacks=callbacks)
+                                     callbacks=callbacks,initial_epoch=initial_epoch)
         return history
 
     def compile_model(self,loss_function='binary_crossentropy',show_metrics=True):

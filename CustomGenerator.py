@@ -75,7 +75,7 @@ class CustomDataGen(Sequence):
                 image = cv.cvtColor(image,cv.COLOR_BGR2RGB)
         
         image = cv.resize(image, shape[:2])
-        if len(image.shape)<2:
+        if len(image.shape)<3:
             image  = np.reshape(image,shape)
         
         if mods is not None:
