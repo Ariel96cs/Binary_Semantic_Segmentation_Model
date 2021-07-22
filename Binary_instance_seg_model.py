@@ -4,6 +4,7 @@ from tensorflow.keras.metrics import MeanIoU
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
 from CustomGenerator import CustomDataGen
 from sklearn.model_selection import train_test_split
+import json
 
 mean_iou = MeanIoU(num_classes=2)
 
@@ -99,7 +100,7 @@ class BInstSeg:
 
     def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, check_point_name=None,
                     save_best_only=True,validation_split=0.1, verbose=1,
-                    batch_size=32, use_custom_generator_training=False):
+                    batch_size=32, use_custom_generator_training=False,save_distribution=True):
         callbacks = []
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
@@ -110,6 +111,11 @@ class BInstSeg:
         if use_custom_generator_training:
             X_train,X_val,y_train,y_val = train_test_split(x_train,y_train,test_size=validation_split,shuffle=True,
                                                            random_state=42)
+            if save_distribution:
+                print("saving train and validation distribution")
+                with open('train_val_distribution.json','w') as file:
+                    json.dump({'X_train':X_train,'X_val':X_val},file)
+
             print("Train:",len(X_train))
             print("Validation:", len(X_val))
             traingen = CustomDataGen(X_train,y_train,batch_size,self.input_shape,load_images_func=self.read_image_func,data_augmentation=True)
