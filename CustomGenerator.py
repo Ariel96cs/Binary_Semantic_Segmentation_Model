@@ -2,8 +2,9 @@ from tensorflow.keras.utils import Sequence
 import cv2 as cv
 import numpy as np
 import json
-from keras.preprocessing.image import load_img
+from keras.preprocessing.image import load_img,img_to_array
 from random import randint,randrange,random
+from RandomAugmetationGen import RandomAugmetationGen
 
 def rot():
     angle=randint(0,50)
@@ -61,24 +62,27 @@ class CustomDataGen(Sequence):
         # print("Loading image:",image_path)
         if gray:
             if 'tif' in image_path:
-                image = np.array(load_img(image_path,color_mode='grayscale'))
+                image = img_to_array(load_img(image_path,color_mode='grayscale'))
             else:
                 image = cv.imread(image_path,0)
             
         else:
             # opencv don't read tif images
             if 'tif' in image_path:
-                image = np.array(load_img(image_path))
+                image = img_to_array(load_img(image_path))
             else:
                 image = cv.imread(image_path)
                 image = cv.cvtColor(image,cv.COLOR_BGR2RGB)
         
-        image = cv.resize(image, shape)
+        image = cv.resize(image, shape[:2])
+        if len(image.shape)<2:
+            image  = np.reshape(image,shape)
+        
         if mods is not None:
             for f in mods:
                 image = f(image)
 
-        image = image / 255
+        image = image* 1./ 255
         # print("image shape", image.shape)
         # cv.imshow('Image',image)
         # cv.waitKey(0)
@@ -95,15 +99,26 @@ class CustomDataGen(Sequence):
         if self.read_image is None:
             # X, y = self.__load_images(batches_x,self.input_size[0:2],gray=self.input_size[-1]==1), self.__load_images(batches_y,self.input_size[0:2],gray=True)
             X ,y = [],[]
-            shape = self.input_size[:2]
+            shape = self.input_size
             # print("Input_shape in getItem",shape)
             if self.data_augmentation:
+                augm = RandomAugmetationGen(self.input_size[:2],rotation_range=40,
+                                    width_shift_range=0.2,
+                                    height_shift_range=0.2,
+                                    shear_range=0.2,
+                                    zoom_range=0.2,
+                                    horizontal_flip=True,
+                                    vertical_flip=True,
+                                    fill_mode='nearest',
+                                    brightness_range=(10,80))
+
                 for x_path,y_path in zip(batches_x,batches_y):
-                    rotation_f = rot()
-                    flips_f = flips()
-                    brightness_f = brightness()
-                    y_mod = [rotation_f,flips_f]
-                    x_mod = [rotation_f,flips_f,brightness_f]
+                    modification_set_of_params_f = augm.generate_random_transformation_f()
+                    modification_fx = modification_set_of_params_f(apply_brightness_mod=True)
+                    modification_fy = modification_set_of_params_f(apply_brightness_mod=False)
+
+                    y_mod = [modification_fy]
+                    x_mod = [modification_fx]
                     X.append(self.__load_image(x_path,shape,gray=self.input_size[-1]==1,mods=x_mod))
                     y.append(self.__load_image(y_path,shape,gray=True,mods=y_mod))
             else:
