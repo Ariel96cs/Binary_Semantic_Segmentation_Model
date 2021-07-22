@@ -1,7 +1,7 @@
 import scipy
 import numpy as np
 from PIL import ImageEnhance
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator,img_to_array,load_img,array_to_img
 
 class RandomAugmetationGen(ImageDataGenerator):
     def __init__(self, input_shape, featurewise_center=False, samplewise_center=False, featurewise_std_normalization=False, samplewise_std_normalization=False, zca_whitening=False, zca_epsilon=1e-06, rotation_range=0, width_shift_range=0.0, height_shift_range=0.0, brightness_range=None, shear_range=0.0, zoom_range=0.0, channel_shift_range=0.0, fill_mode='nearest', cval=0.0, horizontal_flip=False, vertical_flip=False, rescale=None, preprocessing_function=None, data_format=None, validation_split=0.0, dtype=None):
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('-mask','--mask_path',help="Mask input path",type=str)
     parser.add_argument('--iter',help='Number of modifications to check',type=int,default=15)
     args = parser.parse_args()
-    input_shape = (224,224,1)
+    input_shape = (224,224)
 
 
     # data_gen_args = dict(#featurewise_center=True,
@@ -135,88 +135,93 @@ if __name__ == "__main__":
     #                      width_shift_range=0.1,
     #                      height_shift_range=0.1,
     #                      zoom_range=0.2)
-    image_datagen = ImageDataGenerator(
-                        rotation_range=10,
-                         width_shift_range=0.1,
-                         height_shift_range=0.1,
-                         zoom_range=0.05,rescale=1./255,shear_range=5
-                         )
-    # mask_datagen = ImageDataGenerator(rotation_range=10,
+    # image_datagen = ImageDataGenerator(
+    #                     rotation_range=50,
     #                      width_shift_range=0.1,
     #                      height_shift_range=0.1,
-    #                      zoom_range=0.1)
+    #                      zoom_range=0.05,rescale=1./255,shear_range=5
+    #                      )
+    # # mask_datagen = ImageDataGenerator(rotation_range=10,
+    # #                      width_shift_range=0.1,
+    # #                      height_shift_range=0.1,
+    # #                      zoom_range=0.1)
 
-    # Provide the same seed and keyword arguments to the fit and flow methods
-    seed = 0
-    # image_datagen.fit(images, augment=True, seed=seed)
-    # mask_datagen.fit(masks, augment=True, seed=seed)
+    # # Provide the same seed and keyword arguments to the fit and flow methods
+    # seed = 0
+    # # image_datagen.fit(images, augment=True, seed=seed)
+    # # mask_datagen.fit(masks, augment=True, seed=seed)
 
-    image_generator = image_datagen.flow_from_directory(
-        args.image_path,
-        class_mode=None,
-        seed=seed)
-    mask_generator = image_datagen.flow_from_directory(args.mask_path,class_mode=None,seed=seed)
-    # mask_generator = mask_datagen.flow_from_directory(
-    #     args.mask_path,
+    # image_generator = image_datagen.flow_from_directory(
+    #     args.image_path,
     #     class_mode=None,
-    #     seed=seed,interpolation='bilinear')
+    #     seed=seed)
+    # mask_generator = image_datagen.flow_from_directory(args.mask_path,class_mode=None,seed=seed)
+    # # mask_generator = mask_datagen.flow_from_directory(
+    # #     args.mask_path,
+    # #     class_mode=None,
+    # #     seed=seed,interpolation='bilinear')
 
-    # combine generators into one which yields image and masks
-    train_generator = zip(image_generator, mask_generator)
+    # # combine generators into one which yields image and masks
+    # train_generator = zip(image_generator, mask_generator)
 
-    for images, masks in train_generator:
-        for image,mask in zip(images,masks):
-            image = np.array(image)
+    # for images, masks in train_generator:
+    #     for image,mask in zip(images,masks):
+    #         image = np.array(image)
 
-            print(mask.shape)
-            # print("Image",image)
-            # print("Mask",mask)
-            cv.imshow('img',image)
-            cv.imshow('mask',mask)
-            mask = cv.cvtColor(mask,cv.COLOR_BGR2GRAY)
-            mask = np.array(mask,dtype='uint8')
-            cv.imshow('cut',cv.bitwise_and(image, image, mask=mask))
-            k = cv.waitKey(0) & 0xFF
-            if k == ord('q'):
-                exit(0)
+    #         print(mask.shape)
+    #         # print("Image",image)
+    #         # print("Mask",mask)
+    #         cv.imshow('img',image)
+    #         cv.imshow('mask',mask)
+    #         mask = cv.cvtColor(mask,cv.COLOR_BGR2GRAY)
+    #         mask = np.array(mask,dtype='uint8')
+    #         cv.imshow('cut',cv.bitwise_and(image, image, mask=mask))
+    #         k = cv.waitKey(0) & 0xFF
+    #         if k == ord('q'):
+    #             exit(0)
 
-    cv.destroyAllWindows()
+    # cv.destroyAllWindows()
 
-    # augm = RandomAugmetationGen(input_shape,rotation_range=40,
-    #                                 width_shift_range=0.2,
-    #                                 height_shift_range=0.2,
-    #                                 shear_range=0.2,
-    #                                 zoom_range=0.2,
-    #                                 horizontal_flip=True,
-    #                                 vertical_flip=True,
-    #                                 fill_mode='nearest',
-    #                                 brightness_range=(10,80))
+    augm = RandomAugmetationGen(input_shape,rotation_range=40,
+                                    width_shift_range=0.2,
+                                    height_shift_range=0.2,
+                                    shear_range=0.2,
+                                    zoom_range=0.2,
+                                    horizontal_flip=True,
+                                    vertical_flip=True,
+                                    fill_mode='nearest',
+                                    brightness_range=(10,80),)
 
-    # img = cv.imread(args.image_path,0)
+    img = img_to_array(load_img(args.image_path,color_mode='grayscale')) *1./255
     
     # img = cv.resize(img,input_shape[:2])
 
-    # mask = cv.imread(args.mask_path,0)
+    mask = img_to_array(load_img(args.mask_path,color_mode='grayscale'),dtype='uint8') 
     # mask = cv.resize(mask,input_shape[:2])
 
-    # cv.imshow('original img',img)
-    # cv.imshow('original mask',mask)
-    # cv.imshow('original cut',cv.bitwise_and(img, img, mask=mask))
+    cv.imshow('original img',img)
+    cv.imshow('original mask',mask)
+    cv.imshow('original cut',cv.bitwise_and(img, img, mask=mask))
 
-    # for _ in range(args.iter):
-    #     modification_set = augm.generate_random_transformation_f()
-    #     modification_fx = modification_set(apply_brightness_mod=True)
-    #     modification_fy = modification_set(apply_brightness_mod=False)
+    for _ in range(args.iter):
+        modification_set = augm.generate_random_transformation_f()
+        modification_fx = modification_set(apply_brightness_mod=True)
+        modification_fy = modification_set(apply_brightness_mod=False)
 
-    #     new_img = modification_fx(img.copy())
-    #     new_mask = modification_fy(mask.copy())
+        
+        new_img = modification_fx(img.copy())
+        new_img = cv.resize(new_img,input_shape[:2])
 
-    #     cv.imshow('original img',new_img)
-    #     cv.imshow('original mask',new_mask)
-    #     cv.imshow('original cut',cv.bitwise_and(new_img, new_img, mask=new_mask))
-    #     cv.waitKey(0)
+        new_mask = modification_fy(mask.copy())
+        new_mask = cv.resize(new_mask,input_shape[:2])
 
-    # cv.destroyAllWindows()
+        cv.imshow('transform cut',cv.bitwise_and(new_img, new_img, mask=new_mask))
+        k = cv.waitKey(0) & 0xFF
+        if k == ord('q'):
+            exit(0)
+        
+
+    cv.destroyAllWindows()
 
 
 
