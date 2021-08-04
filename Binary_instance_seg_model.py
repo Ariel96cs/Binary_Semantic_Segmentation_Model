@@ -100,7 +100,9 @@ class BInstSeg:
 
     def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, checkpoint_filepath='./checkpoints/',
                     save_best_only=True,validation_split=0.1, verbose=1,
-                    batch_size=32, use_custom_generator_training=False,save_distribution=True, initial_epoch=0):
+                    batch_size=32, use_custom_generator_training=False,
+                    save_distribution=True, initial_epoch=0,
+                    x_val=None,y_val=None):
         callbacks = []
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
@@ -110,8 +112,12 @@ class BInstSeg:
             check_pointer = ModelCheckpoint(f'{checkpoint_filepath}/{name}', verbose=verbose,save_best_only=save_best_only)
             callbacks.append(check_pointer)
         if use_custom_generator_training:
-            X_train,X_val,y_train,y_val = train_test_split(x_train,y_train,test_size=validation_split,shuffle=True,
-                                                           random_state=42)
+            if x_val is None or y_val is None:
+                X_train,X_val,y_train,y_val = train_test_split(x_train,y_train,test_size=validation_split,shuffle=True,
+                                                            random_state=42)
+            else:
+                X_train,X_val,y_train,y_val = x_train,x_val,y_train,y_val
+
             if save_distribution:
                 print("saving train and validation distribution")
                 with open('train_val_distribution.json','w') as file:

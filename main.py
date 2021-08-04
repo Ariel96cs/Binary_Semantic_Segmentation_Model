@@ -34,6 +34,19 @@ def generate_masks_images_from_json(x_paths,y_paths,size):
         cv2.imwrite(mask_path,mask)
         # print(mask_path)
 
+def load_paths(dataset_path):
+    x_paths = []
+    y_paths = []
+    for type_docs_per_nation_folder in Path(dataset_path).iterdir():
+        if not type_docs_per_nation_folder.is_file():
+            images_folder = Path(f"{str(type_docs_per_nation_folder)}/images/")
+            for diff_background_doc_folder in images_folder.iterdir():
+                if not diff_background_doc_folder.is_file():
+                    x_paths += list(diff_background_doc_folder.iterdir())
+    x_paths = [str(i) for i in x_paths]
+    y_paths = [i.replace('/images/','/ground_truth/').replace('.tif','.png') for i in x_paths]
+
+    return x_paths,y_paths
 
 def main():
     parser = ArgumentParser(description="Script for training Unet Model for mask generator")
@@ -78,24 +91,28 @@ def main():
     model.compile_model()
         
     print("Loading segmentation dataset")
-    for type_docs_per_nation_folder in Path(dataset_path).iterdir():
-        if not type_docs_per_nation_folder.is_file():
-            images_folder = Path(f"{str(type_docs_per_nation_folder)}/images/")
-            for diff_background_doc_folder in images_folder.iterdir():
-                if not diff_background_doc_folder.is_file():
-                    x_paths += list(diff_background_doc_folder.iterdir())
-    x_paths = [str(i) for i in x_paths]
-    y_paths = [i.replace('/images/','/ground_truth/').replace('.tif','.png') for i in x_paths]
+    train_folder = Path(f'{dataset_path}/train/')
+    val_folder = Path(f'{dataset_path}/val/')
+    if train_folder.exists() and val_folder.exists():
+        x_train,y_train = load_paths(train_folder)
+        x_val,y_val = load_paths(val_folder)
+        print("Training segmentation model")
+        model.train_model(x_train,y_train,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
+                        ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch,
+                        x_val=x_val,y_val=y_val)
 
-    if generate_masks:
-        print("Generating masks images")
-        generate_masks_images_from_json(x_paths,y_paths,model_input_shape[0:2])
-        return
+    else:
+        x_paths,y_paths = load_paths(dataset_path)
 
-    print("Training segmentation model")
-    # model.compile_model()
-    model.train_model(x_paths,y_paths,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
-                      ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch)
+        if generate_masks:
+            print("Generating masks images")
+            generate_masks_images_from_json(x_paths,y_paths,model_input_shape[0:2])
+            return
+
+        print("Training segmentation model")
+        # model.compile_model()
+        model.train_model(x_paths,y_paths,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
+                        ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch)
 
 if __name__ == '__main__':
     main()
