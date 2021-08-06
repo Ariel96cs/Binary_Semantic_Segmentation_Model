@@ -1,7 +1,8 @@
 from tensorflow.keras.layers import Conv2D,Dropout,MaxPooling2D,Conv2DTranspose, BatchNormalization,Input,Lambda,concatenate
 from tensorflow.keras.models import Model,load_model
 from tensorflow.keras.metrics import MeanIoU
-from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint,ReduceLROnPlateau
+from tensorflow.keras.optimizers import Adam
 from CustomGenerator import CustomDataGen
 from sklearn.model_selection import train_test_split
 import json
@@ -98,7 +99,7 @@ class BInstSeg:
         self.model = model
         return model
 
-    def train_model(self, x_train, y_train, early_stopping_patience=None, epochs=60, checkpoint_filepath='./checkpoints/',
+    def train_model(self, x_train, y_train, early_stopping_patience=None, reduce_lr_callback=True,epochs=60, checkpoint_filepath='./checkpoints/',
                     save_best_only=True,validation_split=0.1, verbose=1,
                     batch_size=32, use_custom_generator_training=False,
                     save_distribution=True, initial_epoch=0,
@@ -107,6 +108,9 @@ class BInstSeg:
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
             callbacks.append(early_stopping)
+        if reduce_lr_callback:
+            reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
+            callbacks.append(reduce_lr)
         if checkpoint_filepath is not None:
             name = 'instance_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
             check_pointer = ModelCheckpoint(f'{checkpoint_filepath}/{name}', verbose=verbose,save_best_only=save_best_only)
