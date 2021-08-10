@@ -3,6 +3,7 @@ from tensorflow.keras.models import Model,load_model
 from tensorflow.keras.metrics import MeanIoU
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint,ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
 from CustomGenerator import CustomDataGen
 from sklearn.model_selection import train_test_split
 import json
@@ -14,6 +15,7 @@ class BInstSeg:
         self.input_shape = input_shape
         self.model = None
         self.read_image_func = read_image_func
+        self.dice_coefficient = False
 
     def build_model(self,show_summary=True,nodes=8):
         # Build U-Net model
@@ -109,11 +111,18 @@ class BInstSeg:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
             callbacks.append(early_stopping)
         if reduce_lr_callback:
-            reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
+            if self.dice_coefficient:
+                reduce_lr = ReduceLROnPlateau(monitor='val_dice_loss',mode='max', factor=0.1, patience=8, min_lr=0.001)
+            else:
+                reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
             callbacks.append(reduce_lr)
         if checkpoint_filepath is not None:
             name = 'instance_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
-            check_pointer = ModelCheckpoint(f'{checkpoint_filepath}/{name}', verbose=verbose,save_best_only=save_best_only)
+            save_model_path = f'{checkpoint_filepath}/{name}'
+            if self.dice_coefficient:
+                cp = tf.keras.callbacks.ModelCheckpoint(filepath=save_model_path, monitor='val_dice_loss', mode='max', save_best_only=True)
+            else:
+                check_pointer = ModelCheckpoint(save_model_path, verbose=verbose,save_best_only=save_best_only)
             callbacks.append(check_pointer)
         if use_custom_generator_training:
             if x_val is None or y_val is None:
@@ -144,11 +153,33 @@ class BInstSeg:
         metrics = []
         if show_metrics:
             metrics.append('binary_accuracy')
-            metrics.append(MeanIoU(num_classes=2))
-        self.model.compile(optimizer='adam', loss=loss_function, metrics=metrics)
+            # metrics.append(MeanIoU(num_classes=2))
+            metrics.append(self.dice_loss)
+        if loss_function == 'dice_loss':
+            self.dice_coefficient = True
+            model.compile(optimizer='adam', loss=self.bce_dice_loss, metrics=[dice_loss])
+        else:
+            self.model.compile(optimizer='adam', loss=loss_function, metrics=metrics)
         
     def load_model(self, model_path):
         self.model = load_model(model_path)
         return self.model
+
+    def dice_coeff(self,y_true, y_pred):
+        smooth = 1.
+        # Flatten
+        y_true_f = tf.reshape(y_true, [-1])
+        y_pred_f = tf.reshape(y_pred, [-1])
+        intersection = tf.reduce_sum(y_true_f * y_pred_f)
+        score = (2. * intersection + smooth) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + smooth)
+        return score
+    
+    def dice_loss(self,y_true, y_pred):
+        loss = 1 - dice_coeff(y_true, y_pred)
+        return loss
+    
+    def bce_dice_loss(self,y_true, y_pred):
+        loss = tf.keras.losses.binary_crossentropy(y_true, y_pred) + dice_loss(y_true, y_pred)
+        return loss
 
 
