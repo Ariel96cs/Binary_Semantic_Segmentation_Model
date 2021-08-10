@@ -144,6 +144,7 @@ class BInstSeg:
         metrics = []
         if show_metrics:
             metrics.append('binary_accuracy')
+            metrics.append(MeanIoU(num_classes=2))
         self.model.compile(optimizer='adam', loss=loss_function, metrics=metrics)
         
     def load_model(self, model_path):
