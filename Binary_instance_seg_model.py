@@ -117,7 +117,7 @@ class BInstSeg:
                 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
             callbacks.append(reduce_lr)
         if checkpoint_filepath is not None:
-            name = 'instance_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
+            name = 'semantic_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
             save_model_path = f'{checkpoint_filepath}/{name}'
             if self.dice_coefficient:
                 check_pointer = ModelCheckpoint(filepath=save_model_path,verbose=verbose, monitor='val_loss', mode='min', save_best_only=save_best_only)
