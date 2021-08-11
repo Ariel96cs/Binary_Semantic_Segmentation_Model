@@ -120,7 +120,7 @@ class BInstSeg:
             name = 'instance_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
             save_model_path = f'{checkpoint_filepath}/{name}'
             if self.dice_coefficient:
-                cp = tf.keras.callbacks.ModelCheckpoint(filepath=save_model_path, monitor='val_dice_loss', mode='max', save_best_only=True)
+                check_pointer = ModelCheckpoint(filepath=save_model_path,verbose=verbose, monitor='val_loss', mode='min', save_best_only=save_best_only)
             else:
                 check_pointer = ModelCheckpoint(save_model_path, verbose=verbose,save_best_only=save_best_only)
             callbacks.append(check_pointer)
@@ -154,10 +154,10 @@ class BInstSeg:
         if show_metrics:
             metrics.append('binary_accuracy')
             # metrics.append(MeanIoU(num_classes=2))
-            metrics.append(self.dice_loss)
+            metrics.append(self.dice_coeff)
         if loss_function == 'dice_loss':
             self.dice_coefficient = True
-            model.compile(optimizer='adam', loss=self.bce_dice_loss, metrics=[dice_loss])
+            self.model.compile(optimizer='adam', loss=self.bce_dice_loss, metrics=metrics)
         else:
             self.model.compile(optimizer='adam', loss=loss_function, metrics=metrics)
         
@@ -175,11 +175,11 @@ class BInstSeg:
         return score
     
     def dice_loss(self,y_true, y_pred):
-        loss = 1 - dice_coeff(y_true, y_pred)
+        loss = 1 - self.dice_coeff(y_true, y_pred)
         return loss
     
     def bce_dice_loss(self,y_true, y_pred):
-        loss = tf.keras.losses.binary_crossentropy(y_true, y_pred) + dice_loss(y_true, y_pred)
+        loss = tf.keras.losses.binary_crossentropy(y_true, y_pred) + self.dice_loss(y_true, y_pred)
         return loss
 
 
