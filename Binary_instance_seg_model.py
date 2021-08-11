@@ -112,7 +112,7 @@ class BInstSeg:
             callbacks.append(early_stopping)
         if reduce_lr_callback:
             if self.dice_coefficient:
-                reduce_lr = ReduceLROnPlateau(monitor='val_dice_loss',mode='max', factor=0.1, patience=8, min_lr=0.001)
+                reduce_lr = ReduceLROnPlateau(monitor='val_loss',mode='max', factor=0.1, patience=8, min_lr=0.001)
             else:
                 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
             callbacks.append(reduce_lr)
