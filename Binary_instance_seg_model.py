@@ -104,25 +104,20 @@ class BInstSeg:
     def train_model(self, x_train, y_train, early_stopping_patience=None, reduce_lr_callback=True,epochs=60, checkpoint_filepath='./checkpoints/',
                     save_best_only=True,validation_split=0.1, verbose=1,
                     batch_size=32, use_custom_generator_training=False,
-                    save_distribution=True, initial_epoch=0,
+                    save_distribution=False, initial_epoch=0,
                     x_val=None,y_val=None):
         callbacks = []
         if early_stopping_patience is not None:
             early_stopping = EarlyStopping(patience=early_stopping_patience,verbose=verbose)
             callbacks.append(early_stopping)
         if reduce_lr_callback:
-            if self.dice_coefficient:
-                reduce_lr = ReduceLROnPlateau(monitor='val_loss',mode='max', factor=0.1, patience=8, min_lr=0.001)
-            else:
-                reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
+            reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=8, min_lr=0.001)
             callbacks.append(reduce_lr)
         if checkpoint_filepath is not None:
-            name = 'semantic_segmentation_model_{epoch:02d}-{val_loss:.4f}.h5'
+            name = 'semantic_segmentation_model_{epoch:02d}-{val_loss:.4f}_dice_coeff-{val_dice_coeff:.4f}_binary_acc_{val_binary_accuracy:.4f}.h5'
             save_model_path = f'{checkpoint_filepath}/{name}'
-            if self.dice_coefficient:
-                check_pointer = ModelCheckpoint(filepath=save_model_path,verbose=verbose, monitor='val_loss', mode='min', save_best_only=save_best_only)
-            else:
-                check_pointer = ModelCheckpoint(save_model_path, verbose=verbose,save_best_only=save_best_only)
+            check_pointer = ModelCheckpoint(save_model_path, verbose=verbose,save_best_only=save_best_only)
+
             callbacks.append(check_pointer)
         if use_custom_generator_training:
             if x_val is None or y_val is None:
@@ -150,6 +145,7 @@ class BInstSeg:
         return history
 
     def compile_model(self,loss_function='binary_crossentropy',show_metrics=True):
+        print("Compiling model")
         metrics = []
         if show_metrics:
             metrics.append('binary_accuracy')
@@ -162,8 +158,10 @@ class BInstSeg:
             self.model.compile(optimizer='adam', loss=loss_function, metrics=metrics)
         
     def load_model(self, model_path):
-        self.model = load_model(model_path)
+        self.model = load_model(model_path,custom_objects={'bce_dice_loss':self.bce_dice_loss,'dice_coeff':self.dice_coeff})
         return self.model
+    def model_is_compiled(self):
+        return self.model._is_compiled
 
     def dice_coeff(self,y_true, y_pred):
         smooth = 1.

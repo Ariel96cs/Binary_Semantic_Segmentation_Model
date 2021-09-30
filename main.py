@@ -1,3 +1,10 @@
+
+
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(gpus[0], True)
+
+
 from pathlib import Path
 from Binary_instance_seg_model import BInstSeg
 from argparse import ArgumentParser
@@ -5,7 +12,7 @@ import cv2
 import numpy as np
 import json
 from tqdm import tqdm
-from keras.preprocessing.image import load_img
+from tensorflow.keras.preprocessing.image import load_img
 from os import makedirs
 
 
@@ -59,8 +66,13 @@ def main():
     parser.add_argument('-G', '--generate_masks_from_json', help="Generate masks images from ground truth json", default=False,
                         type=bool)
     parser.add_argument('-tf','--transfer_learning',help='Train model for transferLearning with specified dataset path for unsupervised learning',type=str)
+    # parser.add_argument('-gpu','--gpu_memory_limit',help='Limit gpu memory disponibility',type=int)
 
     args = parser.parse_args()
+
+        
+    
+
     channels = 1 if args.grayscaled_model_input else 3
     model_input_shape = (args.input_model_shape,args.input_model_shape,channels)
     dataset_path = args.dataset_path
@@ -72,8 +84,9 @@ def main():
     model = BInstSeg(model_input_shape)
     if model_path is not None:
         model.load_model(model_path)
+        
     else:
-        model.build_model(nodes=4)
+        model.build_model(nodes=16)
 
     # model.compile_model()
     print("Loading dataset")
@@ -87,8 +100,9 @@ def main():
         model.compile_model(loss_function='mse',show_metrics=False)
         model.train_model(x_paths,y_paths,early_stopping_patience=10,check_point_name="model_checkpoint_tf.h5"
                       ,use_custom_generator_training=True)
-        model.load_model('model_checkpoint_tf.h5')
-    model.compile_model()
+        model.load_model('model_checkpoint_tf.h5',compile=False)
+    if not model.model_is_compiled():
+        model.compile_model('dice_loss')
         
     print("Loading segmentation dataset")
     train_folder = Path(f'{dataset_path}/train/')
@@ -97,8 +111,8 @@ def main():
         x_train,y_train = load_paths(train_folder)
         x_val,y_val = load_paths(val_folder)
         print("Training segmentation model")
-        model.train_model(x_train,y_train,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
-                        ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch,
+        model.train_model(x_train,y_train,early_stopping_patience=100,checkpoint_filepath=args.model_checkpoint
+                        ,use_custom_generator_training=True,batch_size=64,epochs=400,initial_epoch=args.initial_epoch,
                         x_val=x_val,y_val=y_val)
 
     else:

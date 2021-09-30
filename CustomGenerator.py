@@ -2,9 +2,10 @@ from tensorflow.keras.utils import Sequence
 import cv2 as cv
 import numpy as np
 import json
-from keras.preprocessing.image import load_img,img_to_array
+from tensorflow.keras.preprocessing.image import load_img,img_to_array
 from random import randint,randrange,random
 from RandomAugmetationGen import RandomAugmetationGen
+from sklearn.utils import shuffle
 
 def rot():
     angle=randint(0,50)
@@ -44,40 +45,35 @@ class CustomDataGen(Sequence):
                  y_paths,
                  batch_size,
                  input_size=(224, 224, 3),
-                 shuffle=True, load_images_func=None,data_augmentation=False):
+                 shuffle_=True, load_images_func=None,data_augmentation=False):
         self.batch_size = batch_size
         self.input_size = input_size
-        self.shuffle = shuffle
+        self.shuffle = shuffle_
         self.x_paths = x_paths
         self.y_paths = y_paths
         self.read_image = load_images_func
         self.data_augmentation = data_augmentation
 
         self.n = len(self.x_paths)
+        if shuffle_:
+            self.x_paths,self.y_paths = shuffle(self.x_paths,self.y_paths)
 
     def on_epoch_end(self):
         pass
 
     def __load_image(self,image_path,shape,gray=False,mods=None):
-        # print("Loading image:",image_path)
+
         if gray:
-            if 'tif' in image_path:
-                image = img_to_array(load_img(image_path,color_mode='grayscale'))
-            else:
-                image = cv.imread(image_path,0)
-            
+            image = load_img(image_path,color_mode='grayscale')
         else:
-            # opencv don't read tif images
-            if 'tif' in image_path:
-                image = img_to_array(load_img(image_path))
-            else:
-                image = cv.imread(image_path)
-                image = cv.cvtColor(image,cv.COLOR_BGR2RGB)
-        
-        image = cv.resize(image, shape[:2])
-        
+            image = load_img(image_path)
+
+        image = image.resize(shape[:2])
+        image = img_to_array(image)
+
         if len(image.shape)<3 and gray:
             image  = np.reshape(image,image.shape+(1,))
+        
         
         if mods is not None:
             for f in mods:
@@ -104,9 +100,9 @@ class CustomDataGen(Sequence):
             # print("Input_shape in getItem",shape)
             if self.data_augmentation:
                 augm = RandomAugmetationGen(self.input_size[:2],rotation_range=40,
-                                    width_shift_range=0.2,
-                                    height_shift_range=0.2,
-                                    shear_range=0.2,
+                                    width_shift_range=0.1,
+                                    height_shift_range=0.1,
+                                    shear_range=0.1,
                                     zoom_range=0.2,
                                     horizontal_flip=True,
                                     vertical_flip=True,
