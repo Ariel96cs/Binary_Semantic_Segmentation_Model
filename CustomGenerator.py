@@ -62,7 +62,6 @@ class CustomDataGen(Sequence):
         pass
 
     def __load_image(self,image_path,shape,gray=False,mods=None):
-
         if gray:
             image = load_img(image_path,color_mode='grayscale')
         else:
