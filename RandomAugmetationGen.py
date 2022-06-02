@@ -106,11 +106,14 @@ class RandomAugmetationGen(ImageDataGenerator):
 
     def generate_random_transformation_f(self,seed=None):
         params = self.get_random_transform(self.input_shape, seed)
-        def transformation_funct(apply_brightness_mod=True):
+        def transformation_funct(apply_brightness_mod=True,fill_mode='nearest',cval=0.0):
+            
             if not apply_brightness_mod:
                 params['brightness'] = None
             # print("Checking brightness:",params['brightness'])
             def f(image):
+                self.fill_mode=fill_mode
+                self.cval=cval
                 return self.apply_transform(image, params)
             return f
         return transformation_funct

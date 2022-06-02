@@ -1,9 +1,10 @@
 
 
 import tensorflow as tf
+import os
 gpus = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(gpus[0], True)
-
+# os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 from pathlib import Path
 from Binary_instance_seg_model import BInstSeg
@@ -86,7 +87,7 @@ def main():
         model.load_model(model_path)
         
     else:
-        model.build_model(nodes=16)
+        model.build_model_MobileNetV2Encoder(nodes=16)
 
     # model.compile_model()
     print("Loading dataset")
@@ -104,16 +105,16 @@ def main():
     if not model.model_is_compiled():
         model.compile_model('dice_loss')
         
-    print("Loading segmentation dataset")
     train_folder = Path(f'{dataset_path}/train/')
     val_folder = Path(f'{dataset_path}/val/')
     if train_folder.exists() and val_folder.exists():
+        print("Loading current training and validation data")
         x_train,y_train = load_paths(train_folder)
         x_val,y_val = load_paths(val_folder)
         print("Training segmentation model")
         model.train_model(x_train,y_train,early_stopping_patience=100,checkpoint_filepath=args.model_checkpoint
-                        ,use_custom_generator_training=True,batch_size=64,epochs=400,initial_epoch=args.initial_epoch,
-                        x_val=x_val,y_val=y_val)
+                        ,use_custom_generator_training=True,batch_size=128,epochs=400,initial_epoch=args.initial_epoch,
+                        x_val=x_val,y_val=y_val,save_distribution=False)
 
     else:
         x_paths,y_paths = load_paths(dataset_path)
@@ -126,7 +127,7 @@ def main():
         print("Training segmentation model")
         # model.compile_model()
         model.train_model(x_paths,y_paths,early_stopping_patience=10,checkpoint_filepath=args.model_checkpoint
-                        ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch)
+                        ,use_custom_generator_training=True,epochs=200,initial_epoch=args.initial_epoch,save_distribution=True)
 
 if __name__ == '__main__':
     main()

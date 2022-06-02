@@ -1,3 +1,4 @@
+from textwrap import fill
 from tensorflow.keras.utils import Sequence
 import cv2 as cv
 import numpy as np
@@ -62,6 +63,26 @@ class CustomDataGen(Sequence):
         pass
 
     def __load_image(self,image_path,shape,gray=False,mods=None):
+        # print("Loading image:",image_path)
+        # if gray:
+        #     if 'tif' in image_path:
+        #         image = img_to_array(load_img(image_path,color_mode='grayscale'))
+        #     else:
+        #         image = cv.imread(image_path,0)
+            
+        # else:
+        #     # opencv don't read tif images
+        #     if 'tif' in image_path:
+        #         image = img_to_array(load_img(image_path))
+        #     else:
+        #         image = cv.imread(image_path)
+        #         image = cv.cvtColor(image,cv.COLOR_BGR2RGB)
+
+        # image = cv.resize(image, shape[:2])
+        
+        # if len(image.shape)<3 and gray:
+        #     image  = np.reshape(image,image.shape+(1,))
+
         if gray:
             image = load_img(image_path,color_mode='grayscale')
         else:
@@ -73,12 +94,13 @@ class CustomDataGen(Sequence):
         if len(image.shape)<3 and gray:
             image  = np.reshape(image,image.shape+(1,))
         
-        
+        # cv.imshow('Imageoriginal',image)
         if mods is not None:
             for f in mods:
                 image = f(image)
 
         image = image* 1./ 255
+
         # print("image shape", image.shape)
         # cv.imshow('Image',image)
         # cv.waitKey(0)
@@ -101,17 +123,17 @@ class CustomDataGen(Sequence):
                 augm = RandomAugmetationGen(self.input_size[:2],rotation_range=40,
                                     width_shift_range=0.1,
                                     height_shift_range=0.1,
-                                    shear_range=0.1,
-                                    zoom_range=0.2,
+                                    #shear_range=0.1,
+                                    zoom_range=0.1,
                                     horizontal_flip=True,
                                     vertical_flip=True,
-                                    fill_mode='nearest',
+                                    fill_mode='reflect',
                                     brightness_range=(10,80))
 
                 for x_path,y_path in zip(batches_x,batches_y):
                     modification_set_of_params_f = augm.generate_random_transformation_f()
-                    modification_fx = modification_set_of_params_f(apply_brightness_mod=True)
-                    modification_fy = modification_set_of_params_f(apply_brightness_mod=False)
+                    modification_fx = modification_set_of_params_f(apply_brightness_mod=True,fill_mode='reflect')
+                    modification_fy = modification_set_of_params_f(apply_brightness_mod=False,fill_mode='constant')
 
                     y_mod = [modification_fy]
                     x_mod = [modification_fx]
